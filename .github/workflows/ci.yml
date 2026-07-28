@@ -12,36 +12,47 @@ jobs:
     permissions:
       contents: read
       packages: write
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov
+
+      # Aucune base Postgres nécessaire ici : tests/conftest.py remplace
+      # get_db() par une base SQLite en mémoire (voir StaticPool) - les
+      # tests sont donc totalement indépendants de l'infra.
       - name: Run tests
-        run: pytest --cov=app --cov-report=xml
-      - name: Upload coverage
+        run: pytest --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage.xml
           fail_ci_if_error: true
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
       - name: Build image
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: false
+          push: true
           tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
