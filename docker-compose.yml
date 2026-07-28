@@ -1,0 +1,38 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://labelhub:labelhub@db:5432/labelhub
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-in-production}
+      ACCESS_TOKEN_EXPIRE_MINUTES: "15"
+      REFRESH_TOKEN_EXPIRE_DAYS: "7"
+      ALLOWED_ORIGINS: '["http://localhost:3000"]'
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/code/app  # rechargement à chaud en dev (utile avec --reload)
+    # Applique les migrations avant de démarrer : garantit que le schéma est
+    # toujours à jour avec le code, y compris sur une base fraîchement créée.
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: labelhub
+      POSTGRES_PASSWORD: labelhub
+      POSTGRES_DB: labelhub
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U labelhub -d labelhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
