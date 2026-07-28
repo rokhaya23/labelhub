@@ -45,3 +45,7 @@ def forbidden_action_error_handler(request: Request, exc: ForbiddenActionError):
 @app.exception_handler(NotFoundError)
 def not_found_error_handler(request: Request, exc: NotFoundError):
     return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+@app.get("/health", tags=["health"])
+def health_check():
+    return {"status": "ok"}
